@@ -55,12 +55,12 @@ Normalement, si cette présentation est réussie, vous pourrez déterminez vous 
 
 ## Mots clés
 
+- Performant, fiable, productif
 - Langage système
 - Memory safe
-- Performant, fiable, productif
 
 Note:
-On va commencer par une définition très vague et biaisé (les 3 adjectifs viennent du [site officiel](https://www.rust-lang.org/fr)) 
+On va commencer par une définition très vague et biaisé (les 3 adjectifs viennent du [site officiel](https://www.rust-lang.org/fr))
 
 ---
 
@@ -93,50 +93,31 @@ Note:
 Si vous êtes un dev Java/C#/Javascript félicitation vous utilisez déjà un langage memory safe.
 La particularité de rust, c'est que le langage est memory safe sans GC
 
-Un langage est dit "memory safe" s'il empèche les manipulations invalide de la mémoire.
-Les langages memory safe sont donc apprécié puisqu'il limite considérablement les [failles de sécurité](https://cwe.mitre.org/data/definitions/1399.html), les bugs et les crashs (segfault: memory core dumped)
+Qui ici a fait du C/C++ ?
+Normalement si vous avez fait un peu de C/C++ vous connaissez les segfaults (sinon vous êtes trop fort)
 
-Quelques failes de sécurité courante qui sont impossible en safe rust: use after free, buffer overflow, out of bounds access
-Note:
+Un langage est dit "memory safe" s'il empèche les manipulations invalide de la mémoire.
+Les accès invalide à la memoire sont la source de nombreux problème:
+- crash (segfault memory core dumped)
+- bugs
+- [failles de sécurité](https://cwe.mitre.org/data/definitions/1399.html)
+
+Quelques failes de sécurité courante qui sont impossible dans les langage memory safe: use after free, buffer overflow, out of bounds access
 [source](https://media.defense.gov/2023/Dec/06/2003352724/-1/-1/0/THE-CASE-FOR-MEMORY-SAFE-ROADMAPS-TLP-CLEAR.PDF)
 
 ---
 
-## Rappels sur la mémoire
-
-![Schema de la mémoire de notre programme](memory_layout.svg)
+## Hello, World!
 
 Note:
-Pour pouvoir être exécuter notre programme à besoin de mémoire. Chaque bloc décrit ici à un rôle précis:
-- text: C'est le code machine de l'exécutable
-- data: Toutes les constantes de l'exécutable (chaîne de charactères)
-- bss: Variables statiques qui seront assigné plus tard
-- stack: Comme sont nom l'indique c'est une pile qui contient toutes les variables de taille connue de notre programme
-- heap: Le tas contient toutes les variables de taille dynamique
-
-Les block text, data et bss sont de taille fixe
-
-La stack est géré automatiquement par le compilateur.
-Elle a une taille maximale de quelques Mo (dépasser cette limite déclenche une erreur stack overflow) et contient uniquement des données de taille fixe
-
-La tas est géré par le dev (C/C++: malloc/free) ou le GC
-C'est la partie de la mémoire qui gère les données de taille dynamique
-Et c'est ce dernier bloc qui est la source de beaucoup de nos problèmes:
-La gestion manuelle de la mémoire est la source de nombreux bugs ou failles de sécurité (ex: 70% des CVE Chromium sont des erreurs de memory safety)
-Le garbage collector est plus fiable mais au prix d'un peux de performance
-
-En pratique la memory safety en rust est appliqué:
-- à la compilation: Ownership, Borrow Checker (détecte les use after free, double free)
-- à l'exécution: bound check, null check (Option::unwrap)
-
-Nous verrons plus en détails tous ça plus en détails au fur et à mesure de la présentation
-Petit fait rigolo: il n'y a aucune garentie sur les fuites mémoire
+Pour ce familiariser avec le langage je vous propose d'écrire ensemble le traditionel Hello, World!
+Et pour commencer, nous allons créer notre projet avec cargo
 
 ---
+## Cargo
 
-## Boîte à outil
-
-Cargo est votre interface pour tous vos outils
+- Gestion de projet
+- Extensible
 
 Note:
 Cargo est l'équivalent de npm 
@@ -215,6 +196,7 @@ Pas besoin de faire un équivalent de "npm install" les dépendances seront tél
 
 ---
 
+
 ```rust
 fn main() {
     println!("Hello, world!");
@@ -230,8 +212,10 @@ fn name(arg1: T1) -> T2 {}
 Note:
 Une fonction est déclaré par le mot-clé 'fn'
 Le nom de la fonction est unique (impossible d'avoir plusieurs fonction avec le même nom mais des paramètres différents)
-Les arguments sont au format nom: TYPE, il n'y a pas d'argument par défaut/optionel, pas de varargs/variadic
+Les arguments sont au format "nom: TYPE"
 Si une valeur est retourné on l'indique après la flèche
+
+Très simple: il n'y a pas d'argument par défaut/optionel/nommé, pas de varargs/variadic
 
 ---
 
@@ -271,8 +255,27 @@ fn main() {
 ```
 
 Note:
-Une variable est déclaré avec le mot-clé "let" suivie de son nom, par défaut les variables sont immutables et leurs types sont inférés.
-Attention les variable ont un type et ne peuvent pas changer de type.
+Une variable est déclaré avec le mot-clé "let" suivie de son nom, par défaut le type est inféré.
+Attention les variables sont quand même strictement typé (ne peuvent pas changer de type) et en plus les variables ne sont pas nullable. 
+
+---
+
+```rust[3]
+fn main() {
+    let name  = "Sfeir";
+    println!("Hello, {}!", name);
+}
+```
+
+Note:
+Si vous suivez attentivement vous devriez avors des questions sur `println!`:
+- Pourquoi elle a un point d'exclamation ?
+- Pourquoi elle peut prendre 1 ou 2 argument ?
+
+Ce n'est pas vraiment une fonction: c'est une fonction-like macro
+Les macros sont un mécanisme de métaprogramming qui génère du code.
+
+C'est un sujet un hors sujet donc retenez juste que les macros peuvent ignorer des règles de syntaxe puisqu'une étape d'expansion va les réécrire  
 
 ---
 
@@ -307,50 +310,412 @@ TODO: pourquoi une string slice
 
 ---
 
-```rust[3]
+## Références
+- adresse vers une valeur
+- toujours valide
+
+![](reference.svg)
+
+Note:
+Les références sont des adresses vers des objets.
+En rust les références sont explicite (comme en C++), signalé par "&" et pointent toujours vers un objet valide
+
+On fait des références pour éviter de dupliquer nos valeurs, la plupart des langages avec GC font eux-même le choix de passer par référence ou de copier les valeurs
+
+---
+
+## Rappels sur la mémoire
+
+![Schema de la mémoire de notre programme](memory_layout.svg)
+
+Note:
+Pour pouvoir être exécuté notre programme à besoin de mémoire (Du point de vue de l'application la mémoire est continue, c'est la mémoire virtuelle fournit par l'OS).
+
+Chaque bloc décrit ici à un rôle précis:
+
+---
+
+## Blocs statiques
+
+- Text contient les instructions
+- Data contient les variables statiques initialisés
+- Bss contient les variables statiques non initialisés
+
+Note:
+Les block text, data et bss sont de taille fixe et sont donc très simple à gérer.
+Il faut juste initialliser les variable dans Bss avant d'y accéder
+
+---
+
+## Stack
+
+```rust
+let var1 = 58;
+{
+    let var2 = 39
+} // var2 n'est plus accessible 
+```
+![Schema de l'utilisation d'une stack](stack.svg)
+
+Note:
+La stack est le bloc qui va contenir toutes nos variables, elle est géré automatiquement par le compilateur.
+Comme sont nom l'indique c'est une pile où sont inséré des valeurs de manière continue, les éléments doivent donc être LIFO
+Elle a une taille maximale de quelques Mo (dépasser cette limite déclenche une erreur stack overflow) et contient uniquement des données de taille fixe
+
+[Pour plus de détails](https://yuriygeorgiev.com/2024/02/19/x86-64-cpu-architecture-the-stack/)
+
+---
+
+## Heap
+
+- Gestion manuelle
+- Allocation lente
+
+![Schema de la heap](heap.svg)
+
+Note:
+Le tas est le bloc le plus puissant. C'est lui qui va contenir nos données de taille dynamique ou trop grosse pour rentrer dans la stack.
+En contrepartie la heap à 2 inconvénients:
+Pour allouer de la mémoire, l'allocateur doit trouvé un espace libre ou en redemander l'OS -> Ça prend un peu de temps et rend la heap plus lente que la stack lors de l'allocation.
+Généralement le temps d'allocation reste très faible mais il faire beaucoup d'allocation/déallocation très rapidement peut ralentir considérablement le programme
+
+Le plus gros inconvénient c'est qu'elle doit être géré manuellement soit par le dev (C/C++: malloc/free) soit par le GC durant l'exécution
+
+La gestion manuelle de la mémoire est la source de nombreux bugs ou failles de sécurité (ex: 70% des CVE Chromium sont des erreurs de memory safety)
+Le garbage collector est beaucoup plus fiable mais au prix d'un peu de performance
+
+---
+
+## Surprise!
+
+```rust
 fn main() {
     let name: &str = "Sfeir";
     println!("Hello, {}!", name);
 }
 ```
 
+![](reference.svg)
 
 Note:
-Si vous suivez attentivement vous devriez avors des questions sur `println!`:
-- Pourquoi elle a un point d'exclamation ?
-- Pourquoi elle peut prendre 1 ou 2 argument ?
+J'espère que vous avez été attentif !
+Dans quelle partie de la mémoire est situé la variable "name" ? Stack
+Dans quelle partie de la mémoire est situé la valeur "Sfeir" ? .data (C'est une constante -> variable statique initiallisé)
 
-Ce n'est pas vraiment une fonction: c'est une fonction-like macro
-Les macros sont un mécanisme de métaprogramming qui génère du code.
+---
 
-C'est un sujet un peu compliqué donc retenez juste que les macros peuvent ignorer des règles de syntaxe puisqu'une étape d'expansion va les réécrire  
+## Et la memory safety ?
+
+- Ownership
+- Borrow checker
+
+Note:
+C'est bien joli tout ça mais à la base on devait résoudre le problème de la mémoire safety !
+Pour l'instant ce qu'on a vu de Rust est plutôt proche du C++ alors que ce n'est vraiment pas un bon example en terme de memory safety !
+
+La solution est en 2 parties:
+- L'ownership pour l'allocation/déallocation de la mémoire
+- Le borrow checker pour valider les références
+
+C'est deux eléments sont assez unique à Rust et sont souvent cité comme le principal obstacle à l'apprentissage de Rust
+
+---
+
+## Ownership
+
+- Chaque valeur a un seul proriétaire
+- Si le owner est *out-of-scope* la valeur est **dropped**
+
+Note:
+
+Les mots sont abstaits mais globalement ici une valeur désigne une structure ou une enumération
+Le propriétaire est une variable qui possède une structure (cad: ce n'est pas une référence).
+Lorsque le propriétaire est hors de porté, la valeur est supprimé immédiatement, contrairement au langage avec GC.
+
+petit rappel: porté des variables
 
 ---
 
 ```rust
-struct Person {
-    name: String,
-    role: String
-}
+{
+    let s: &str = "Hello, world!";
+} 
 ```
 
 Note:
-On va stocker deux infos dans notre structure: le nom et le role de la personne
-(Si vous avez remarquez que le type de chaîne de caractère à changé: félicitation ! String nous permet de travailler avec des chaînes mutable et de longueur arbitraire)
+Lorsque s sort de la porté, l'ownership ne fait rien puisque s n'est *pas* un owner (c'est une référence)
 
-Comme dans beaucoup d'autre langage un mécanisme d'encapsulation existe
-Par défaut les champs d'une structure sont privé (accessible uniquement depuis le module actuel)
+---
 
---- 
+```rust
+{
+    let s: String = String::from("Hello, world!");
+} 
+```
+
+Note:
+Ici on a remplacé &str par String: s est le owner de la String.
+Maintenant lorsque s sort de la porté, l'ownership nous dit que la String possédé par S doit être drop
+
+---
+
+```rust
+{
+    let s1: String = String::from("Hello, world!");
+    let s2 = s1;
+} 
+```
+
+Note:
+Que se passe t-il quand "s2 = s1" s'exécute ? 
+Dans beaucoup de langage avec GC s2 est une référence à s1 mais en Rust les références sont explicites.
+
+---
+
+```rust
+{
+    let s1: String = String::from("Hello, world!");
+    let s2 = s1;
+} 
+```
+
+![Schema clone](clone.svg)
+
+Note:
+On pourait cloner s1. C'est possible avec la fonction "clone()" mais ce n'est pas très performant: il faut refaire une allocation et copier toutes la chaîne !
+
+---
+
+```rust
+{
+    let s1: String = String::from("Hello, world!");
+    let s2 = s1;
+}
+```
+
+![Schema double ownership](double_owner.svg)
+
+Note:
+On pourrait copier seulement les métadatas de s1 et partager le buffer ?
+Non, on brise une règle de l'ownership: une valeur n'as qu'un propiétaire
+
+---
+
+```rust
+{
+    let s1: String = String::from("Hello, world!");
+    let s2 = s1;
+    drop(s1);
+    println!("{}", s2);
+}
+```
+
+![Schema dangling pointer](dangling.svg)
+
+Note:
+Si s1 est drop, en tant que owner de la chaîne de charactère, il libère la mémoire
+Mais maintenant s2 a un "dangling pointer": un pointer qui ne mêne à rien.
+C'est extrèmement dangeureux car si on essaye de lire le contenu de s2 c'est un "use after free" et si s2 est drop la libération du pointer va provoquer un double free
+
+---
+
+## Move
+```rust
+{
+    let s1: String = String::from("Hello, world!");
+    let s2 = s1;
+    drop(s1);
+    println!("{}", s2);
+}
+```
+
+![Schema move](move.svg)
+
+Note:
+"s2 = s1" est un move ! On déplace la propriété de s1 vers s2 et s1 devient invalide. Plus de problème de mémoire
+
+---
+
+## Surprise 2
+
+```rust
+let x = String::from("Sfeir");
+let y = x;
+
+println!("Hello, {}", x);
+```
+
+Note:
+Que va afficher le programme ? Une erreur "x" n'est plus valide à cause du move "y = x"
+
+---
+
+```rust
+let x = String::from("Sfeir");
+let y = x;
+
+println!("Hello, {}", x);
+```
+![Erreur de compilation a cause d'un move](move_error.png)
+
+Note:
+Je vous invite à admirer la beauté du message d'erreur du compilateur
+Il nous explique parfaitement la cause du problème
+
+La valeur "Sfeir" a été déplacé vers de 'x' vers 'y'. Comme une valeur ne peut avoir qu'un propiétaire 'x' n'est plus une variable valide.
+Le compilateur propose une solution: utiliser la methode `clone()` qui va dupliquer la chaîne de caractère. Après la duplication 'x' garde sa chaîne de caractères et
+'y' obtient une chaîne identique à celle de 'x'
+Comme le compilateur le dis juste au dessus cloner à un coût: vous faîtes une nouvelle allocation mémoire qui peut prendre du temps et de la mémoire en fonction de la taille de la valeur dupliqué.
+
+Vous avez peut-être remarqué que le compilateur nous dit aussi que le move à lieu parce que le type n'implémente pas le trait `Copy`.
+Pour les types très petit le coût d'un clone est minuscule, le trait `Copy` est un marqueur qui indique au compilateur qu'il peut cloner tous le temps, ce qui permet de ne pas avoir à ce soucier des moves.
+
+---
+
+## Borrow
+
+```rust
+let x = String::from("Sfeir");
+let y = &x;
+
+println!("Hello, {}", x);
+```
+
+Note:
+Une solution que le compilateur n'a pas proposé est de faire un *emprunt* (on prend la valeur par reference)
+Comme le nom l'indique plus que de prendre possésion de la valeur, on va temporairement l'emprunter.
+Ici, `x` est l'*owner* et `y` *borrow* la valeur de `x`. Comme `y` est une référence (et donc pas propriétaire), `x` est toujours valide !
+
+---
+
+## Dangling ?
+```rust
+let x = String::from("Sfeir");
+let y = &x;
+drop(x);
+
+println!("Hello, {}", y);
+```
+
+Note:
+On ne brise aucune règle de l'ownership et pourtant y est une référence invalide !
+Et oui l'ownership sert à vérifier que la mémoire est déalloué seulement une fois ne garentie pas la validité des reférences.
+
+---
+
+## Borrow checker
+
+```rust
+let x = String::from("Sfeir");
+let y = &x;
+drop(x);
+
+println!("Hello, {}", y);
+```
+
+![Message d'erreur move d'une valeur borrow](move_borrow.png)
+
+Note:
+Heuresement rust à le **borrow checker** !
+
+---
+
+## Borrow checker
+- Une reference est toujours valide
+- Une valeur à une seule référence mutable **ou** plusieurs références immutables
+
+Note:
+La première règle est nécéssaire pour obtenir la *memory safety*: il ne faut pas que la valeur soit *dropped* pendant la *durée de vie* de la référence,
+sinon on s'expose a des bugs comme le use after free qui au mieux provoque des segfault, au pire des undefined behaviors et des failles de sécurités
+
+La deuxième règle évite les *data race* et facilite grandement la *thread safety*.
+
+---
+
+## Surprise 3
+
+```rust
+let s1 = String::from("Sfeir");
+let s2 = &s1;
+let s3 = &s1;
+```
+
+Note:
+Est-ce que ce code respecte le borrow checker ? Oui -> plusieurs référence non mutable
+
+---
+
+## Surprise 3
+
+```rust
+let s1 = String::from("Sfeir");
+let s2 = &mut s1;
+```
+
+Note:
+Est-ce que ce code respecte le borrow checker ? Oui mais il y a une faute -> Il ne peut pas y avoir référence mutable vers une valeur immutable (contrairement à Java)
+
+---
+
+## Surprise 3
+
+```rust
+let mut s1 = String::from("Sfeir");
+let s2 = &mut s1;
+```
+
+Note:
+Contrairement à d'autre langage (Java, Typescript), une variable immutable est (par défaut) vraiment immutable. Il n'est pas possible de push() une valeur sur une liste immutable par exemple
+
+---
+
+## Surprise 3
+
+```rust
+let mut s1 = String::from("Sfeir");
+{
+    let s2 = &mut s1;
+}
+let s3 = &mut s1;
+```
+
+Note:
+Est-ce que ce code respecte le borrow checker ? Oui -> La référence `s2` est relaché avant que `s3` ne soit déclaré !
+
+---
+
+## Félicitation
+
+Note:
+Bon, c'était compliqué tous ça ! Si vous n'avez pas tous saisi, c'est normal ! Il m'a fallut plusieurs jours pour vraiment comprendre et connaître ces rêgles
+Ce sont les 2 concepts qui différencie vraiment rust des autres langages, le reste de la présentation seraa beaucoup plus simple, promis !
+
+---
+
+## Struct
+
+```rust
+struct Person {
+    name: String,
+    role: Role
+}
+```
+
+Note: 
+Les structs sont l'équivalent des classes, elles rassemblent des données dans un type et permette d'y associer des fonctionnalités 
+
+---
 
 ```rust[2|3]
 struct Person {
     pub name: String,
-    pub(crate) role: String,
+    pub(crate) role: Role,
 }
 ```
 
 Note:
+Comme dans beaucoup d'autre langage un mécanisme d'encapsulation existe
+Par défaut les champs d'une structure sont privé (accessible uniquement depuis le module actuel)
 Avec `pub` on peut rendre un champ public dans n'importe quel module
 Avec `pub(crate)` on rend le champ accessible dans la crate actuel
 
@@ -359,33 +724,34 @@ Avec `pub(crate)` on rend le champ accessible dans la crate actuel
 ```rust
 let speaker = Person {
     name: String::from("Fabien"),
-    role: String::from("développeur fullstack"),
+    role: Role::DevFullstack,
 };
 ```
 
 Note:
 Pour instancier une structure, on donne le type suivit de toutes les clé-valeurs `champ: value` de la structures.
-la syntaxe permet d'éviter les constructeurs avec trop d'arguments et les objects à moitié initiallisé
-Si vous n'avez pas accès à un champs d'une structure il faudra utiliser *un constructeur*
+la syntaxe permet d'éviter les constructeurs avec beaucoup d'arguments et les objects à moitié initiallisé
+Si vous n'avez pas accès à un champs d'une structure il faudra utiliser **un constructeur**
 
 ---
 
 ```rust
 impl Person
-    fn directeur_general() -> Person {
+    pub fn manager() -> Person {
         Self {
-            name: String::from("Didier Girard"),
-            role: String::from("Directeur Général SFEIR Groupe"),
+            name: String::from("Joshua Liaud"),
+            role: Role::DevFront, //Angular
         }
     }
 }
 ```
 
 ```rust
-let dg = Person::directeur_general();
+let em = Person::manager();
 ```
 Note:
 Il n'y a pas de constructeur en rust, mais il y a des fonctions associées (fonction statique en bon Java) qui peuvent returner des instances
+Les fonctions associé et les méthodes se déclare dans un bloc "impl Type" séparé de la déclaration de la structure (mais dans même le module TODO?)
 
 ---
 
@@ -404,9 +770,92 @@ Note:
 Pour faire des méthodes, il suffit de créer une fonction associée avec en premier argument `self`, `&self` ou `&mut self`
 Ces trois arguments permette de faire la distinction entre passer par valeur, passer par référence et passer par référence mutable
 
+Pour rappel le passage par valeur provoque un move à cause de l'ownership !
+
+TODO: Ajouter des fonction avec `self` et `&mut self` ?
+
+---
+
+## Enumération
+
+```rust
+enum Role {
+    DevFront,
+    DevBack,
+    DevFullstack,
+    DevOps,
+}
+```
+
+Note:
+Les énumérations en Rust fonctionne comme celle de la plupart des langages 
+
+---
+
+## Enumération
+
+```rust
+enum Role {
+    DevFront(TechFront),
+    DevBack(TechBack),
+    DevFullstack {
+        front: TechFront,
+        back: TechBack
+    },
+    DevOps,
+}
+```
+
+Note:
+Mais elles peuvent aussi avoir des données associées ! Les données peuvent être hétérogène entre les variantes de l'enum sans aucun soucis
+Les données associées peuvent être sous la forme d'un tuple, ou d'une stucture
+
+---
+
+```rust
+Person {
+    name: String::from("Joshua Liaud"),
+    role: Role::DevFront(TechFront::Angular),
+}
+```
+
+---
+
+```rust
+impl Role {
+    fn fullstack_java() -> Self {
+        Self::DevFullstack {
+            front: TechFront::GWT,
+            back: TechBack::Java
+        }
+    }
+}
+```
+
+Note:
+Les enumérations peuvent définir des fonctions associées et des méthodes de la même manière que les structs
+
+---
+
+## Pattern matching
+
+Note:
+TODO
+
 ---
 
 ## Traits
+
+Note:
+A peu près équivalent aux interfaces, les traits permettent de déclarer des comportements communs à plusieurs types.
+
+Les traits sont utilisé pour beaucoup de chose:
+- Ownership: Clone, Drop, Copy
+- Operateur: Add, Sub, Mul, Div, BitAnd, BitOr, BitXor, Shr, Shl, Neg, Not et leurs équivalent Assign
+- Comparaison: PartialEq, Eq, PartialOrd, Ord
+- Conversion: From, Into, TryFrom, TryInto
+- Affichage: Debug, Display, ToString
+- Iterateur
 
 ---
 
@@ -421,7 +870,6 @@ pub trait Clone: Sized {
 ```
 
 Note:
-L'équivalent des interfaces, les traits permettent de déclarer des fonctions qui seront implémenter par les structs
 La fonction clone n'a pas d'implementation par défaut, elle est doit être implémenté 
 La fonction clone_from a une implémentation par défaut et peut optionellement être override
 
@@ -430,182 +878,73 @@ Les plus observateurs ont remarqué ': Sized'. Il s'agit d'un bound: "une contra
 ---
 
 ```rust
-impl Clone for Greet {
+impl Clone for Person {
     fn clone(&self) -> Self {
         Self {
-            name: self.name.clone()
+            name: self.name.clone(),
+            role: self.role.clone()
         }
     }
 }
 ```
 
 Note:
-Un trait est implémenté de manière très similaire à une structure 
+Un trait est implémenté de manière très similaire à une structure.
+Comme les fonctions associées, l'implémentation d'un trait par une structure est séparé de la déclaration du type.
 
 ---
 
 ```rust
 #[derive(Debug, Clone)]
-pub struct Greet {
-    name: String
+pub struct Person {
+    name: String,
+    role: Role
 }
 ```
 
 Note:
-Certain comme Clone sont extrèmement courant et répétitif a implémenter. Et la solution à ce problème, c'est les derive macros.
-Une derive macro permet d'implémenté un trait de manière simple et rapide.
-
----
-
-## Ownership
-- Chaque valeur a un seul proriétaire
-- Si le owner est *out-of-scope* la valeur est **dropped**
-
-Note:
-L'ownership est **la** caractéristique distinctive du langage et c'est grâce à elle que Rust est memory safe sans avoir besoin de GC.
-C'est un concept qu'on ne retrouve pas dans d'autre langage et qui prends un peu de temps à assimiler
-
-Les mots sont abstaits mais globalement ici une valeur désigne un morceau de mémoire alloué (une structure ou une enum) et
-le propriétaire est une variable qui est chargé de nettoyé cette mémoire
-
-petit rappel: porté des variables
+Certain trait comme Clone, Debug, sont extrèmement courant et répétitif a implémenter. Et la solution à ce problème, c'est les derive macros.
+Une derive macro permet d'implémenter un trait de manière simple et rapide.
 
 ---
 
 ```rust
-{
-    // s n'est pas encore accessible
-    let s = String::from("Hello, world!");
-    // s est accessible !
-} // s n'est plus accessible 
+trait IsPalindrome {
+    fn is_palindrome(&self) -> bool;
+}
+
+impl IsPalindrome for &str {
+...
+}
 ```
-
-Note: Rien de nouveau !
-
----
-
-## Ownership
-- Chaque valeur a un seul proriétaire
-- Si le owner est *out-of-scope* la valeur est **dropped**
-
-Note:
-Lorqu'une valeur est *relâché* sa mémoire est libéré
-La libération de la mémoire (et l'exécution de `Drop::drop()` si implémenté) se fait immédiatement contrairement au nettoyage par GC 
-
----
 
 ```rust
-let x = String::from("x");
-
-dbg!(x);
+assert("kayak".is_palindrome());
 ```
 
 Note:
-A vôtre avis qu'affiche ce code ?
+Il y a quelques instant j'ai dis que l'implémentation d'un trait était séparé de la déclaration du type. Mais est-ce que ça veut dire que je peux implémenter des traits sur des types externes (types importé de la std ou d'une autre crate, que je n'ai pas défini) ?
+Oui, mais avec une restriction: une implémentation ne peut pas être orpheline càd elle doit être dans la même crate que la déclaration de la struct **ou** du trait
 
 ---
 
-```
-x = "x"
-```
----
-
-```rust
-let x = String::from("x");
-let y = x;
-
-dbg!(y);
-```
+## Struct abstraite et héritage
 
 Note:
-Si j'ajoute une nouvelle variable `y` et que j'assigne `x` à `y` on fait un *move*
-On vient de changer le propiétaire de la chaîne de caractères.
-
-Qu'est ce qui va se passer si on affiche le contenu de la variable `y` ?
+Vous connaissez les paroles: après les interfaces on voit les structures abstraites, l'héritage et le polymorphisme... Vive l'OOP
+Et bien non ! Il n'y a pas de classes abstraite en rust ni d'héritage ! Il y a bien du polymorphisme mais on ne va même pas en parler !
 
 ---
 
-```
-y = "x"
-```
+## Genérique
 
 ---
 
-```rust
-let x = String::from("x");
-let y = x;
-
-dbg!(x);
-```
-
-Note:
-Et encore la même question: Qu'est qui s'affiche si on regarde le contenu de `x` ?
+## Option
 
 ---
 
-```console
-error[E0382]: use of moved value: `x`
- --> src/bin/day01.rs:5:5
-  |
-2 |     let x = String::from("x");
-  |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
-3 |     let y = x;
-  |             - value moved here
-4 |
-5 |     dbg!(x);
-  |     ^^^^^^^ value used here after move
-  |
-  = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider cloning the value if the performance cost is acceptable
-  |
-3 |     let y = x.clone();
-  |             ++++++++
-    
-For more information about this error, try `rustc --explain E0382`.
-```
-
-Note:
-Je vous invite à admirer la beauté du message d'erreur du compilateur
-Il nous explique parfaitement la cause du problème
-
-La valeur de x a été déplacé vers y. Comme une valeur ne peut avoir qu'un propiétaire `x` n'est plus une variable valide.
-Le compilateur propose une solution: utiliser la methode `clone()` qui va dupliquer la chaîne de caractère. Après la duplication `x` garde sa chaîne de caractères et
-`y` obtient une chaîne identique à celle de `x`
-Comme le compilateur le dis juste au dessus cloner à un coût: vous faîtes une nouvelle allocation mémoire qui peut prendre du temps et de la mémoire en fonction de la taille de la valeur dupliqué et du nombre de clone.
-
-Si vous êtes observateur vous avez remarquer que le compilateur nous dit que le move à lieu parce que le type n'implément pas le trait `Copy`.
-Pour les types très petit le coût d'un clone est minuscule, le trait `Copy` indique au compilateur qu'il peut cloner tous le temps, ce qui permet de ne pas avoir à ce soucier des moves.
-Les types qui implémentes `Copy` sont toutes les entiers et float 
-
----
-
-## Borrow
-
-```rust
-let x = String::from("x");
-let y = &x;
-
-dbg!(x);
-dbg!(y);
-```
-
-Note:
-Une solution que le compilateur n'a pas proposé est de faire un *emprunt* (on prend la valeur par reference)
-Comme le nom l'indique plus que de prendre possésion de la valeur, on va temporairement l'emprunter.
-Ici, `x` est l'*owner* et `y` *borrow* la valeur de `x` 
-
----
-
-## Borrow Checker
-- Une reference est toujours valide
-- Une valeur à une seule référence mutable *ou* plusieurs références immutables
-
-Note:
-L'incovénient de cette solution c'est qu'il faut respecter le **borrow checker**
-La première règle est nécéssaire pour obtenir la *memory safety*: il ne faut pas que la valeur soit *dropped* pendant la *durée de vie* de la référence,
-sinon on s'expose a des bugs comme le use after free qui au mieux provoque des segfault, au pire des undefined behaviors et des failles de sécurités
-
-La deuxième règle évite les *data race* et facilite grandement la *thread safety*,
+## Result
 
 ---
 
@@ -625,10 +964,27 @@ La deuxième règle évite les *data race* et facilite grandement la *thread saf
 
 ---
 
+## Conclusion
+
+Note:
+Inconvénients:
+Vous l'avez constaté par vous même c'est un langage qui demande plus d'effort au dev -> Plus lent (A apprendre, comme à écrire)
+Les temps de compilations: Le compilateur fait beaucoup de vérification et il peut prendre beaucoup de temps (surtout si vous abusez des macros)
+
+Avantages:
+Performances: Pas forcément le plus pertinent dans une application mais ça peut répondre à un besoin particulier
+Fiabilité: Pas de null, exception explicite, typage fort et expressif
+Qualité des outils: Cargo est merveilleux, les messages du compilateurs sont clair et les API sont très expressive.
+Rustfmt a une excellente configuration par défaut, Rustdoc est très agréable, ajouter des tests unitaires est ridiculement simple
+
+---
+
 ## Resources
 
-- Rust book
-- Rustling
+- [The rust book](https://doc.rust-lang.org/stable/book/)
+- [Rustlings](https://rustlings.rust-lang.org/)
+- [The rustdoc book](https://doc.rust-lang.org/rustdoc/index.html)
+- [The cargo book](https://doc.rust-lang.org/cargo/)
 
 ---
 
